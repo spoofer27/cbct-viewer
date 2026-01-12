@@ -1,0 +1,6 @@
+pyside6
+pydicom
+numpy
+opencv-python
+watchdog
+sqlite3   (built-in)
