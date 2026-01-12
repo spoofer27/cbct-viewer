@@ -1,9 +1,10 @@
 import pydicom
 import numpy as np
 
-def load_volume(datasets, folder_path):
+def load_volume(datasets, folder_path, progress_callback=None):
     slices = []
     image_datasets = []
+    total = len(datasets)
 
     for i, ds in enumerate(datasets):
 
@@ -14,6 +15,9 @@ def load_volume(datasets, folder_path):
         arr = full_ds.pixel_array
         slices.append(arr)
         image_datasets.append(full_ds)
+
+        if progress_callback:
+            progress_callback.emit(int((i + 1) / total * 100))
 
     if not slices:
         raise ValueError("No image slices found in this scan")
