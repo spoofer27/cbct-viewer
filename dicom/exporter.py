@@ -1,38 +1,25 @@
-# dicom/exporter.py
-
 import os
 import pydicom
 from pydicom.uid import generate_uid
 import numpy as np
 
-def export_as_multiple_dicoms(
-    volume,
-    reference_datasets,
-    output_dir
-):
+def export_as_multiple_dicoms(dicom_datasets, output_dir):
     """
-    volume: numpy array (Z, Y, X)
-    reference_datasets: list of original pydicom datasets (sorted)
+    Exports the current scan as multiple DICOM files
+    using original metadata (one file per slice)
     """
 
     os.makedirs(output_dir, exist_ok=True)
 
-    series_uid = generate_uid()
+    for i, ds in enumerate(dicom_datasets, start=1):
+        # make a safe copy
+        out_ds = ds.copy()
 
-    for i, ds_ref in enumerate(reference_datasets):
-        ds = ds_ref.copy()
+        # update instance number to be clean
+        out_ds.InstanceNumber = i
 
-        ds.SeriesInstanceUID = series_uid
-        ds.InstanceNumber = i + 1
-
-        ds.PixelData = volume[i].tobytes()
-
-        output_path = os.path.join(output_dir, f"slice_{i+1:04d}.dcm")
-        ds.save_as(output_path)
-
-    return output_dir
-
-
+        filename = os.path.join(output_dir, f"slice_{i:04d}.dcm")
+        out_ds.save_as(filename)
 
 def export_as_single_dicom(
     volume,

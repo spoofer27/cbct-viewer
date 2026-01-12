@@ -12,12 +12,9 @@ class ScoutViewer(QWidget):
 
         self.label = QLabel("Select a scan")
         self.label.setAlignment(Qt.AlignCenter)
-        # self.label.setScaledContents(True)
 
-        # layout = QVBoxLayout()
         layout = QVBoxLayout(self)
         layout.addWidget(self.label)
-        # self.setLayout(layout)
         self._pixmap = None 
 
     def load_scan(self, scan_path):
@@ -35,7 +32,6 @@ class ScoutViewer(QWidget):
 
         h, w = img.shape
         qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
-        # self.label.setPixmap(QPixmap.fromImage(qimg))
         self._pixmap = QPixmap.fromImage(qimg)
         self._update_pixmap()
 

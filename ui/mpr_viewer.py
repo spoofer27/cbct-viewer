@@ -6,10 +6,6 @@ class MPRViewer(QWidget):
     def __init__(self):
         super().__init__()
 
-        # self.axial = SliceViewer()
-        # self.coronal = SliceViewer()
-        # self.sagittal = SliceViewer()
-
         self.axial_viewer = SliceViewer()
         self.axial_widget = ViewWithScrollbar(self.axial_viewer, axis=0)
 
@@ -24,11 +20,6 @@ class MPRViewer(QWidget):
         layout.addWidget(self.axial_widget, 0, 0)
         layout.addWidget(self.coronal_widget, 0, 1)
         layout.addWidget(self.sagittal_widget, 1, 0)
-
-        
-        # layout.addWidget(self.axial, 0, 0)
-        # layout.addWidget(self.coronal, 0, 1)
-        # layout.addWidget(self.sagittal, 1, 0)
 
     def set_volume(self, volume):
         self.volume = volume
@@ -45,8 +36,3 @@ class MPRViewer(QWidget):
         self.sagittal_viewer.set_volume(volume, axis=2)
         self.sagittal_widget.slider.show()
         self.sagittal_widget.slider.setRange(0, x - 1)
-
-   
-        # self.axial.set_volume(volume, axis=0)
-        # self.coronal.set_volume(volume, axis=1)
-        # self.sagittal.set_volume(volume, axis=2)

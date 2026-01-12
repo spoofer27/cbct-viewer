@@ -65,7 +65,6 @@ class SliceViewer(QGraphicsView):
             img = img[::-1, ::-1]
 
         img = img.astype(np.float32)
-        # img = (img - img.min()) / (img.ptp() + 1e-6) * 255
         img = (img - img.min()) / (np.ptp(img) + 1e-6) * 255
         img = img.astype(np.uint8)
 

@@ -28,7 +28,6 @@ def scan_root(root_path):
             continue
 
         meta = read_case_metadata(first_dicom)
-        # print(meta)
         
 
         def transform_name(raw_string):

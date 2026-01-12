@@ -21,9 +21,6 @@ class ViewWithScrollbar(QWidget):
         layout.addWidget(self.viewer, 0, 0)   # viewer expands
         layout.addWidget(self.slider, 0, 1)   # scrollbar stays narrow
 
-        # layout.addWidget(self.viewer)
-        # layout.addWidget(self.slider)
-
         self.slider.valueChanged.connect(self.viewer.set_slice)
         self.viewer.sliceChanged.connect(self.slider.setValue)
         self.slider.hide()
