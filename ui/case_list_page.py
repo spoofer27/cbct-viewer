@@ -1,7 +1,8 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
-    QTableWidget, QTableWidgetItem
+    QTableWidget, QTableWidgetItem, QHeaderView
 )
+from PySide6.QtCore import Qt
 import sqlite3
 from database.db import DB_PATH
 
@@ -18,6 +19,12 @@ class CaseListPage(QWidget):
         self.table.setHorizontalHeaderLabels(
             ["ID", "Name", "Age", "Gender", "Date"]
         )
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.table.cellClicked.connect(self.open_case)
 
         layout = QVBoxLayout(self)
@@ -43,7 +50,10 @@ class CaseListPage(QWidget):
             r = self.table.rowCount()
             self.table.insertRow(r)
             for i in range(5):
-                self.table.setItem(r, i, QTableWidgetItem(row[i]))
+                val = row[i] if row[i] is not None else ""
+                item = QTableWidgetItem(str(val))
+                item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(r, i, item)
 
     def open_case(self, row, _):
         case_path = self.rows[row][5]

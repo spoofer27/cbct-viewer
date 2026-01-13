@@ -1,14 +1,12 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QPushButton, QFileDialog, QProgressBar,
-    QListWidget, QSplitter, QTreeWidget, QTreeWidgetItem, QApplication
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QProgressBar,
+    QListWidget, QSplitter, QTreeWidget, QTreeWidgetItem, QApplication, QLabel, QGroupBox, QStackedLayout
 )
 import os
 from ui.scout_viewer import ScoutViewer
 from dicom.scan_utils import analyze_scan
 from dicom.volume_loader import load_volume
 from ui.mpr_viewer import MPRViewer
-from PySide6.QtWidgets import QWidget, QStackedLayout
-from ui.scout_viewer import ScoutViewer
 from ui.mpr_viewer import MPRViewer
 # from ui.loading_overlay import LoadingOverlay
 from dicom.volume_loader import load_volume
@@ -26,7 +24,8 @@ class CaseViewerPage(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
-        self.back_btn = QPushButton("← Back to Cases")
+        self.back_btn = QPushButton("← Back")
+        self.back_btn.setFixedHeight(35)
         self.back_btn.clicked.connect(self.on_back)
         self.scan_tree = QTreeWidget()
         self.scan_tree.setHeaderHidden(True)
@@ -35,15 +34,17 @@ class CaseViewerPage(QWidget):
         self.preview_stack = QStackedLayout(self.preview_container)
         self.scout_viewer = ScoutViewer()
         self.mpr_viewer = MPRViewer()
-        # self.loading_overlay = LoadingOverlay()
         self.preview_stack.addWidget(self.scout_viewer)  # index 0
         self.preview_stack.addWidget(self.mpr_viewer)    # index 1
-        # self.preview_stack.addWidget(self.loading_overlay)
 
-        self.export_multi_btn = QPushButton("Export Multi-DICOM")
+        self.export_multi_btn = QPushButton("Multi-DICOM")
+        self.export_multi_btn.setFixedHeight(30)
+        self.export_multi_btn.setEnabled(False)
         self.export_multi_btn.clicked.connect(self.on_export_multiple)
 
         self.export_single_btn = QPushButton("Export Sinlge-DICOM")
+        self.export_single_btn.setFixedHeight(30)
+        self.export_single_btn.setEnabled(False)
         self.export_single_btn.clicked.connect(self.on_export_single)
 
         self.progress_bar = QProgressBar()
@@ -54,6 +55,9 @@ class CaseViewerPage(QWidget):
         self.volume = None
         self.dicom_datasets = None
         self.patient_name = None
+        self.patient_name_label = QLabel("")
+        self.patient_name_label.setFixedHeight(30)
+        
 
 
         splitter = QSplitter()
@@ -61,16 +65,43 @@ class CaseViewerPage(QWidget):
         splitter.addWidget(self.preview_container)
         splitter.setStretchFactor(1, 1)
 
+        top_bar = QWidget()
+        top_bar.setFixedHeight(60)
+        top_layout = QHBoxLayout(top_bar)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(0)
+        # Left side
+        left_widget = QWidget()
+        # left_widget.setFixedHeight(100)
+        left_layout = QHBoxLayout(left_widget)
+        left_layout.addWidget(self.back_btn)
+        left_layout.setContentsMargins(5, 10, 5, 10)
+        left_layout.setSpacing(10)
+        top_layout.addWidget(left_widget)
+        # Right side
+        export_group = QGroupBox("Export")
+        export_layout = QHBoxLayout(export_group)
+        export_layout.addWidget(self.export_multi_btn)
+        export_layout.addWidget(self.export_single_btn)
+        export_layout.setContentsMargins(5, 5, 5, 5)
+        export_layout.setSpacing(5)
+        top_layout.addWidget(export_group)
+        top_layout.addWidget(self.patient_name_label)
+        # Add stretch to push right to the right
+        top_layout.addStretch()
+
         layout = QVBoxLayout(self)
-        layout.addWidget(self.back_btn)
-        layout.addWidget(self.export_multi_btn)
-        layout.addWidget(self.export_single_btn)
-        self.layout().addWidget(self.progress_bar)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(top_bar)
+        layout.addWidget(self.progress_bar)
         layout.addWidget(splitter)
     
     def on_back(self):
             self.scout_viewer.hide()
             self.mpr_viewer.hide()
+            self.export_multi_btn.setEnabled(False)
+            self.export_single_btn.setEnabled(False)
             self.main.go_back()
 
     def load_case(self, case_path):
@@ -97,24 +128,27 @@ class CaseViewerPage(QWidget):
             date_item.setExpanded(True)
 
     def on_volume_loaded(self, result):
-                    volume, dicom_datasets = result
+        volume, dicom_datasets = result
 
-                    volume = orient_volume(volume, dicom_datasets[0])
+        volume = orient_volume(volume, dicom_datasets[0])
 
-                    self.current_volume = volume
-                    self.dicom_datasets = dicom_datasets
+        self.current_volume = volume
+        self.dicom_datasets = dicom_datasets
+        # self.patient_name_label.setText(self.patient_name)
+        self.export_multi_btn.setEnabled(True)
+        self.export_single_btn.setEnabled(True)
+        self.mpr_viewer.set_volume(volume)
+        self.preview_stack.setCurrentIndex(1)
 
-                    self.mpr_viewer.set_volume(volume)
-                    self.preview_stack.setCurrentIndex(1)
+        self.progress_bar.hide()
 
-                    self.progress_bar.hide()
-
-                    self.thread.quit()
-                    self.thread.wait()
+        self.thread.quit()
+        self.thread.wait()
 
     def open_item(self, item, _):
         scan_path = item.data(0, 1)
         self.preview_stack.setCurrentIndex(2)
+        self.patient_name_label.setText(self.patient_name)
 
         if not scan_path:
             return
@@ -131,19 +165,21 @@ class CaseViewerPage(QWidget):
                 return f"{part2} {part1_clean}"
             return raw_string # Return original if format doesn't match
 
-        patient = str(info["datasets"][0].get("PatientName", ""))
-        
-
-        patient_name = transform_name(patient)
-        self.patient_name = patient_name
-        print(f"Opening scan for patient: {self.patient_name}")
-
         if info["type"] == "scout":
             self.scout_viewer.show()
             self.scout_viewer.load_scan(scan_path)
             self.preview_stack.setCurrentIndex(0)
+            self.patient_name_label.setText("Scout Image")            
+            self.export_multi_btn.setEnabled(False)
+            self.export_single_btn.setEnabled(False)            
 
         elif info["type"] == "cbct":
+
+            patient = str(info["datasets"][0].get("PatientName", ""))
+        
+            patient_name = transform_name(patient)
+            self.patient_name = patient_name
+            self.patient_name_label.setText(self.patient_name)
 
             self.progress_bar.show()
             self.progress_bar.setValue(0)
@@ -161,20 +197,6 @@ class CaseViewerPage(QWidget):
 
             self.thread.start()
 
-
-
-            # self.volume, self.dicom_datasets  = load_volume(info["datasets"], scan_path)
-            # self.volume = orient_volume(self.volume, self.dicom_datasets[0])
-            # self.current_volume = self.volume
-
-            # self.mpr_viewer.show()
-            # self.mpr_viewer.set_volume(self.volume)
-            # self.preview_stack.setCurrentIndex(1)
-            # self.loading_overlay.hide()
-
-        # output_dir = r"G:\Projects\Py Projects\export_test"
-        # export_as_multiple_dicoms( dicom_datasets, output_dir)
-
     def on_export_multiple(self):
         if not self.dicom_datasets:
             print("No DICOM datasets loaded for export.")
@@ -186,8 +208,6 @@ class CaseViewerPage(QWidget):
 
         if not output_dir:
             return
-
-        # export_as_multiple_dicoms(self.dicom_datasets, output_dir)
 
         self.progress_bar.show()
         self.progress_bar.setValue(0)
