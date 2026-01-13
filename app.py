@@ -4,7 +4,7 @@ from database.db import init_db
 from dicom.scanner import scan_root
 from ui.main_window import MainWindow
 
-ROOT_FOLDER = "G:\Projects\Py Projects\VolumeData"
+ROOT_FOLDER = "G:\\Projects\\Py Projects\\VolumeData"
 
 init_db()
 scan_root(ROOT_FOLDER)
