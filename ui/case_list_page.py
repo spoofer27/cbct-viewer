@@ -26,6 +26,7 @@ class CaseListPage(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         self.table.cellClicked.connect(self.open_case)
+        self.table.setSortingEnabled(True)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.search)
@@ -37,13 +38,40 @@ class CaseListPage(QWidget):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
 
-        rows = c.execute("""
-        SELECT id, name, age, gender, date, path FROM cases
-        """).fetchall()
+        search_text = self.search.text().strip()
+        if search_text:
+            query = """
+            SELECT id, name, age, gender, date, path FROM cases
+            WHERE name LIKE ? OR CAST(id AS TEXT) LIKE ? OR date LIKE ?
+            """
+            rows = c.execute(query, ('%' + search_text + '%', '%' + search_text + '%', '%' + search_text + '%')).fetchall()
+        else:
+            rows = c.execute("""
+            SELECT id, name, age, gender, date, path FROM cases
+            """).fetchall()
+
+        conn.close()
+
+    def load_cases(self):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        search_text = self.search.text().strip()
+        if search_text:
+            query = """
+            SELECT id, name, age, gender, date, path FROM cases
+            WHERE name LIKE ? OR CAST(id AS TEXT) LIKE ? OR date LIKE ?
+            """
+            rows = c.execute(query, ('%' + search_text + '%', '%' + search_text + '%', '%' + search_text + '%')).fetchall()
+        else:
+            rows = c.execute("""
+            SELECT id, name, age, gender, date, path FROM cases
+            """).fetchall()
 
         conn.close()
 
         self.rows = rows
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
 
         for row in rows:
@@ -54,6 +82,8 @@ class CaseListPage(QWidget):
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(r, i, item)
+
+        self.table.setSortingEnabled(True)
 
     def open_case(self, row, _):
         case_path = self.rows[row][5]

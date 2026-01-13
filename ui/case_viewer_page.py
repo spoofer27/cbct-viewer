@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QProgressBar,
-    QListWidget, QSplitter, QTreeWidget, QTreeWidgetItem, QApplication, QLabel, QGroupBox, QStackedLayout
+    QListWidget, QSplitter, QTreeWidget, QTreeWidgetItem, QApplication, QLabel, QGroupBox, QStackedLayout, QCheckBox
 )
 import os
 from ui.scout_viewer import ScoutViewer
@@ -47,6 +47,8 @@ class CaseViewerPage(QWidget):
         self.export_single_btn.setEnabled(False)
         self.export_single_btn.clicked.connect(self.on_export_single)
 
+        self.romexis_checkbox = QCheckBox("Romexis")
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
@@ -83,6 +85,7 @@ class CaseViewerPage(QWidget):
         export_layout = QHBoxLayout(export_group)
         export_layout.addWidget(self.export_multi_btn)
         export_layout.addWidget(self.export_single_btn)
+        export_layout.addWidget(self.romexis_checkbox)
         export_layout.setContentsMargins(5, 5, 5, 5)
         export_layout.setSpacing(5)
         top_layout.addWidget(export_group)
@@ -242,3 +245,9 @@ class CaseViewerPage(QWidget):
             return
 
         export_as_single_dicom(self.dicom_datasets, volume_for_export, file_path)
+
+        if self.romexis_checkbox.isChecked():
+            import pydicom
+            ds = pydicom.dcmread(file_path)
+            ds.file_meta.ImplementationVersionName = 'ROMEXIS_10'
+            ds.save_as(file_path)
