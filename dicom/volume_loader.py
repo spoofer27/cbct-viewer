@@ -2,6 +2,16 @@ import pydicom
 import numpy as np
 
 def load_volume(datasets, folder_path, progress_callback=None):
+    if len(datasets) == 1:
+        ds = datasets[0]
+        full_ds = pydicom.dcmread(ds.filename, force=True)
+        if hasattr(full_ds, 'NumberOfFrames') and full_ds.NumberOfFrames > 1:
+            volume = full_ds.pixel_array
+            volume = volume.astype(np.int16)
+            if progress_callback:
+                progress_callback.emit(100)
+            return volume, [full_ds]
+
     slices = []
     image_datasets = []
     total = len(datasets)

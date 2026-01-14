@@ -6,7 +6,6 @@ import re
 from datetime import datetime
 
 def scan_root(root_path):
-    print(f"Scanning root folder: {root_path}")
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
@@ -70,7 +69,5 @@ def scan_root(root_path):
             meta["gender"], date, case_path
         ))
         
-        print(meta["id"], name, meta["age"],
-            meta["gender"], date, case_path)
     conn.commit()
     conn.close()

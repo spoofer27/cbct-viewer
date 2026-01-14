@@ -30,6 +30,10 @@ class ScoutViewer(QWidget):
         img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
         img = img.astype(np.uint8)
 
+        img = np.fliplr(img)  # Flip left-right for correct orientation
+
+        img = np.ascontiguousarray(img)
+
         h, w = img.shape
         qimg = QImage(img.data, w, h, w, QImage.Format_Grayscale8)
         self._pixmap = QPixmap.fromImage(qimg)

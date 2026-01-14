@@ -12,35 +12,48 @@ def analyze_scan(scan_path):
     if not dicoms:
         return None
 
-    if len(dicoms) == 1:
-        return {
-            "type": "scout",
-            "files": dicoms
-        }
+    # if len(dicoms) == 1:
+    #     return {
+    #         "type": "scout",
+    #         "files": dicoms
+    #     }
 
     # CBCT volume
-    # slices = []
     datasets = []
     for f in dicoms:
         try:
             ds = pydicom.dcmread(f, stop_before_pixels=True)
-            # slices.append((ds, f))
             datasets.append(ds)
         except:
             continue
 
-    # Sort slices by Z (ImagePositionPatient)
-    # slices.sort(
-    #     key=lambda x: float(x[0].ImagePositionPatient[2])
-    #     if hasattr(x[0], "ImagePositionPatient") else 0
-    # )
-    datasets = sort_slices_by_position(datasets)
+    if not datasets:
+        return None
 
-    return {
-        "type": "cbct",
-         "datasets": datasets
-        # "files": [f for _, f in slices]
-    }
+    if len(datasets) == 1:
+        print("Only one valid DICOM file found")
+        ds = datasets[0]
+        # print(ds)
+        if hasattr(ds, 'NumberOfFrames') and ds.NumberOfFrames > 1:
+            print("Single-file CBCT detected")
+            return {
+                "type": "cbct-singlefile",
+                "datasets": datasets
+            }
+        else:
+            print(" scout detected")
+            return {
+                "type": "scout",
+                "datasets": datasets
+            }
+    else:
+        # Assume CBCT: multiple single-slice DICOM files
+        datasets = sort_slices_by_position(datasets)
+        print("Multi-file CBCT detected")
+        return {
+            "type": "cbct",
+            "datasets": datasets
+        }
 
 def sort_slices_by_position(datasets):
     iop = np.array(datasets[0].ImageOrientationPatient, dtype=float)

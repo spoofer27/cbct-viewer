@@ -5,12 +5,17 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import sqlite3
 from database.db import DB_PATH
+from ui.scout_viewer import ScoutViewer
+from ui.mpr_viewer import MPRViewer
 
 class CaseListPage(QWidget):
     def __init__(self, main_window):
         super().__init__()
         self.main = main_window
 
+        self.scout_viewer = ScoutViewer()
+        self.mpr_viewer = MPRViewer()
+        
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search case...")
         self.search.textChanged.connect(self.load_cases)
@@ -70,7 +75,6 @@ class CaseListPage(QWidget):
 
         conn.close()
 
-        self.rows = rows
         self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
 
@@ -81,10 +85,15 @@ class CaseListPage(QWidget):
                 val = row[i] if row[i] is not None else ""
                 item = QTableWidgetItem(str(val))
                 item.setTextAlignment(Qt.AlignCenter)
+                if i == 0:  # Store path in first item
+                    item.setData(Qt.UserRole, row[5])
                 self.table.setItem(r, i, item)
 
         self.table.setSortingEnabled(True)
 
     def open_case(self, row, _):
-        case_path = self.rows[row][5]
+        item = self.table.item(row, 0)
+        case_path = item.data(Qt.UserRole)
+        self.scout_viewer.show()
+        self.mpr_viewer.show()
         self.main.open_case(case_path)

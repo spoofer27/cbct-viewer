@@ -4,7 +4,7 @@ from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 import numpy as np
 from copy import deepcopy
 
-def export_as_multiple_dicoms(dicom_datasets, output_dir, progress_callback=None):
+def export_as_multiple_dicoms(dicom_datasets, volume, output_dir, progress_callback=None):
     """
     Exports the current scan as multiple DICOM files
     using original metadata (one file per slice)
@@ -12,20 +12,41 @@ def export_as_multiple_dicoms(dicom_datasets, output_dir, progress_callback=None
 
     os.makedirs(output_dir, exist_ok=True)
 
-    total = len(dicom_datasets)
-
-    for i, ds in enumerate(dicom_datasets, start=1):
-        # make a safe copy
-        out_ds = ds.copy()
-
-        # update instance number to be clean
-        out_ds.InstanceNumber = i
-
-        filename = os.path.join(output_dir, f"slice_{i:04d}.dcm")
-        out_ds.save_as(filename)
-        
-        if progress_callback:
-            progress_callback.emit(int((i + 1) / total * 100))
+    if len(dicom_datasets) == 1 and hasattr(dicom_datasets[0], 'NumberOfFrames') and dicom_datasets[0].NumberOfFrames > 1:
+        # Multi-frame single file: split into individual slices
+        ds_template = dicom_datasets[0]
+        total_frames = volume.shape[0]
+        for i in range(total_frames):
+            out_ds = ds_template.copy()
+            out_ds.InstanceNumber = i + 1
+            out_ds.PixelData = volume[i].tobytes()
+            # Remove multi-frame tags
+            if 'NumberOfFrames' in out_ds:
+                del out_ds.NumberOfFrames
+            # Set single-frame required tags
+            out_ds.SOPInstanceUID = generate_uid()
+            out_ds.file_meta.TransferSyntaxUID = ExplicitVRLittleEndian
+            out_ds.SamplesPerPixel = 1
+            out_ds.PhotometricInterpretation = "MONOCHROME2"
+            out_ds.BitsAllocated = 16
+            out_ds.BitsStored = 16
+            out_ds.HighBit = 15
+            out_ds.PixelRepresentation = 1
+            # Optionally set SeriesInstanceUID to new, but maybe keep for series
+            filename = os.path.join(output_dir, f"slice_{i+1:04d}.dcm")
+            out_ds.save_as(filename)
+            if progress_callback:
+                progress_callback.emit(int((i + 1) / total_frames * 100))
+    else:
+        # Multiple single-frame files
+        total = len(dicom_datasets)
+        for i, ds in enumerate(dicom_datasets, start=1):
+            out_ds = ds.copy()
+            out_ds.InstanceNumber = i
+            filename = os.path.join(output_dir, f"slice_{i:04d}.dcm")
+            out_ds.save_as(filename)
+            if progress_callback:
+                progress_callback.emit(int(i / total * 100))
 
 def o_export_as_single_dicom(
     volume,
@@ -66,7 +87,11 @@ def fix_orientation_for_dicom(volume):
 
     return volume
 
-def export_as_single_dicom(datasets, volume, output_path):
+def export_as_single_dicom(datasets, volume, output_path, progress_callback=None):
+
+    total = len(datasets)
+    print(total)
+
     if not datasets:
         raise ValueError("No datasets to export")
 
@@ -109,3 +134,7 @@ def export_as_single_dicom(datasets, volume, output_path):
             delattr(template, tag)
 
     template.save_as(output_path)
+
+    if progress_callback:
+        progress_callback.emit(int((total + 1) / total * 100))
+

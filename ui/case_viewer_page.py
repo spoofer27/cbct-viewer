@@ -42,7 +42,7 @@ class CaseViewerPage(QWidget):
         self.export_multi_btn.setEnabled(False)
         self.export_multi_btn.clicked.connect(self.on_export_multiple)
 
-        self.export_single_btn = QPushButton("Export Sinlge-DICOM")
+        self.export_single_btn = QPushButton("Sinlge-DICOM")
         self.export_single_btn.setFixedHeight(30)
         self.export_single_btn.setEnabled(False)
         self.export_single_btn.clicked.connect(self.on_export_single)
@@ -59,6 +59,7 @@ class CaseViewerPage(QWidget):
         self.patient_name = None
         self.patient_name_label = QLabel("")
         self.patient_name_label.setFixedHeight(30)
+        self.export_file_path = None
         
 
 
@@ -157,6 +158,7 @@ class CaseViewerPage(QWidget):
             return
 
         info = analyze_scan(scan_path)
+        print(f"Scan info: {info["type"]}")
 
         def transform_name(raw_string):
             parts = raw_string.split('^')
@@ -169,6 +171,8 @@ class CaseViewerPage(QWidget):
             return raw_string # Return original if format doesn't match
 
         if info["type"] == "scout":
+            print("Loading scout image")
+            self.export_multi_btn.show()
             self.scout_viewer.show()
             self.scout_viewer.load_scan(scan_path)
             self.preview_stack.setCurrentIndex(0)
@@ -177,6 +181,10 @@ class CaseViewerPage(QWidget):
             self.export_single_btn.setEnabled(False)            
 
         elif info["type"] == "cbct":
+
+            self.export_multi_btn.show()
+            self.preview_stack.setCurrentIndex(1)
+            print("000")
 
             patient = str(info["datasets"][0].get("PatientName", ""))
         
@@ -200,6 +208,34 @@ class CaseViewerPage(QWidget):
 
             self.thread.start()
 
+        elif info["type"] == "cbct-singlefile":
+            print("Loading single-file CBCT")
+
+            self.export_multi_btn.hide()
+
+            patient = str(info["datasets"][0].get("PatientName", ""))
+        
+            patient_name = transform_name(patient)
+            self.patient_name = patient_name
+            self.patient_name_label.setText(self.patient_name)
+
+            self.progress_bar.show()
+            self.progress_bar.setValue(0)
+
+            self.thread = QThread()
+            self.worker = Worker(load_volume, info["datasets"], scan_path)
+
+            self.worker.moveToThread(self.thread)
+
+            self.worker.progress.connect(self.progress_bar.setValue)
+            self.worker.finished.connect(self.on_volume_loaded)
+            self.worker.error.connect(print)
+
+            self.thread.started.connect(self.worker.run)
+
+            self.thread.start()
+            
+
     def on_export_multiple(self):
         if not self.dicom_datasets:
             print("No DICOM datasets loaded for export.")
@@ -216,15 +252,20 @@ class CaseViewerPage(QWidget):
         self.progress_bar.setValue(0)
 
         self.thread = QThread()
-        self.worker = Worker( export_as_multiple_dicoms, self.dicom_datasets, output_dir)
+        self.worker = Worker( export_as_multiple_dicoms, self.dicom_datasets, self.current_volume, output_dir)
 
         self.worker.moveToThread(self.thread)
         self.worker.progress.connect(self.progress_bar.setValue)
-        self.worker.finished.connect(lambda _: self.progress_bar.hide())
+        self.worker.finished.connect(self.on_export_multiple_finished)
         self.worker.error.connect(print)
 
         self.thread.started.connect(self.worker.run)
         self.thread.start()
+
+    def on_export_multiple_finished(self):
+        self.progress_bar.hide()
+        self.thread.quit()
+        self.thread.wait()
 
     def on_export_single(self):
         if not self.dicom_datasets:
@@ -244,10 +285,28 @@ class CaseViewerPage(QWidget):
         if not file_path:
             return
 
-        export_as_single_dicom(self.dicom_datasets, volume_for_export, file_path)
+        self.export_file_path = file_path
 
+        self.progress_bar.show()
+        self.progress_bar.setValue(0)
+
+        self.thread = QThread()
+        self.worker = Worker( export_as_single_dicom, self.dicom_datasets, volume_for_export, file_path)
+        
+        self.worker.moveToThread(self.thread)
+        self.worker.progress.connect(self.progress_bar.setValue)
+        self.worker.finished.connect(self.on_export_single_finished)
+        self.worker.error.connect(print)
+
+        self.thread.started.connect(self.worker.run)
+        self.thread.start()
+
+    def on_export_single_finished(self):
         if self.romexis_checkbox.isChecked():
             import pydicom
-            ds = pydicom.dcmread(file_path)
+            ds = pydicom.dcmread(self.export_file_path)
             ds.file_meta.ImplementationVersionName = 'ROMEXIS_10'
-            ds.save_as(file_path)
+            ds.save_as(self.export_file_path)
+        self.progress_bar.hide()
+        self.thread.quit()
+        self.thread.wait()
