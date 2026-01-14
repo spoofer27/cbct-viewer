@@ -94,6 +94,4 @@ class CaseListPage(QWidget):
     def open_case(self, row, _):
         item = self.table.item(row, 0)
         case_path = item.data(Qt.UserRole)
-        self.scout_viewer.show()
-        self.mpr_viewer.show()
         self.main.open_case(case_path)
